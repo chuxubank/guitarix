@@ -32,6 +32,13 @@ jobs:
             lv2 \
             sassc
 
+      - name: Set environment variables
+        run: |
+          FFTW_PREFIX="$(brew --prefix fftw)"
+          echo "CPATH=${FFTW_PREFIX}/include${CPATH:+:$CPATH}" >> "$GITHUB_ENV"
+          echo "LIBRARY_PATH=${FFTW_PREFIX}/lib${LIBRARY_PATH:+:$LIBRARY_PATH}" >> "$GITHUB_ENV"
+          echo "PKG_CONFIG_PATH=${FFTW_PREFIX}/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}" >> "$GITHUB_ENV"
+
       - name: Configure
         working-directory: trunk
         run: ./waf configure --prefix=/usr/local --includeresampler --includeconvolver --optimization
