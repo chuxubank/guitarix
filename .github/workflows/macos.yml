@@ -35,8 +35,9 @@ jobs:
       - name: Set environment variables
         run: |
           FFTW_PREFIX="$(brew --prefix fftw)"
-          echo "CPATH=${FFTW_PREFIX}/include${CPATH:+:$CPATH}" >> "$GITHUB_ENV"
-          echo "LIBRARY_PATH=${FFTW_PREFIX}/lib${LIBRARY_PATH:+:$LIBRARY_PATH}" >> "$GITHUB_ENV"
+          BOOST_PREFIX="$(brew --prefix boost)"
+          echo "CPATH=${FFTW_PREFIX}/include:${BOOST_PREFIX}/include${CPATH:+:$CPATH}" >> "$GITHUB_ENV"
+          echo "LIBRARY_PATH=${FFTW_PREFIX}/lib:${BOOST_PREFIX}/lib${LIBRARY_PATH:+:$LIBRARY_PATH}" >> "$GITHUB_ENV"
           echo "PKG_CONFIG_PATH=${FFTW_PREFIX}/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}" >> "$GITHUB_ENV"
 
       - name: Configure
