@@ -3,7 +3,12 @@ name: macos-build
 on:
   push:
     branches: ["**"]
+    tags:
+      - "v*"
   pull_request:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -18,32 +23,54 @@ jobs:
         run: |
           brew update
           brew install \
-            gperf \
-            intltool \
             boost \
             eigen \
+            fftw \
+            gperf \
             gtk+3 \
             gtkmm3 \
+            intltool \
             jack \
             lilv \
             lrdf \
-            libsndfile \
-            fftw \
             lv2 \
+            libsndfile \
+            pkg-config \
+            python@3.12 \
             sassc
 
       - name: Set environment variables
         run: |
           FFTW_PREFIX="$(brew --prefix fftw)"
           BOOST_PREFIX="$(brew --prefix boost)"
+          PKG_PREFIX="$(brew --prefix pkg-config)"
+          PY3_PREFIX="$(brew --prefix python@3.12)"
+
           echo "CPATH=${FFTW_PREFIX}/include:${BOOST_PREFIX}/include${CPATH:+:$CPATH}" >> "$GITHUB_ENV"
           echo "LIBRARY_PATH=${FFTW_PREFIX}/lib:${BOOST_PREFIX}/lib${LIBRARY_PATH:+:$LIBRARY_PATH}" >> "$GITHUB_ENV"
           echo "PKG_CONFIG_PATH=${FFTW_PREFIX}/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}" >> "$GITHUB_ENV"
+          echo "PATH=${PY3_PREFIX}/bin:${PKG_PREFIX}/bin:$PATH" >> "$GITHUB_ENV"
 
       - name: Configure
         working-directory: trunk
-        run: ./waf configure --prefix=/usr/local --includeresampler --includeconvolver --optimization --no-avahi --no-bluez --no-lv2-gui
+        run: python3 ./waf configure --prefix=/usr/local --includeresampler --includeconvolver --optimization --no-avahi --no-bluez --no-lv2-gui
 
       - name: Build
         working-directory: trunk
-        run: ./waf build
+        run: python3 ./waf build
+
+      - name: Package
+        if: startsWith(github.ref, 'refs/tags/')
+        working-directory: trunk
+        run: |
+          python3 ./waf install --destdir="$PWD/package-root"
+          VERSION="${GITHUB_REF_NAME}"
+          PKG_NAME="guitarix-${VERSION}-macos-universal.tar.gz"
+          tar -C "$PWD/package-root" -czf "$PWD/${PKG_NAME}" .
+          echo "PKG_NAME=${PKG_NAME}" >> "$GITHUB_ENV"
+
+      - name: Upload release asset
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: trunk/${{ env.PKG_NAME }}
