@@ -668,9 +668,12 @@ bool ModuleSequencer::update_module_lists() {
 	commit_module_lists();
 	if (stateflags & SF_OVERLOAD) {
 	    // hack: jackd need some time for new load statistic
-#if defined(_WINDOWS) || defined(__APPLE__)
+#ifdef GUITARIX_AS_PLUGIN
         clearoverride_conn=signal_timeout().connect(
-            sigc::mem_fun(*this, &ModuleSequencer::clear_override));
+            sigc::bind_return(
+                sigc::bind(
+                    sigc::mem_fun(*this, &ModuleSequencer::clear_stateflag),
+                    SF_OVERLOAD), false));
 #else
         Glib::signal_timeout().connect_once(
             sigc::bind(
