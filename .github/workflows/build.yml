@@ -1,0 +1,94 @@
+name: build
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            gperf \
+            intltool \
+            ladspa-sdk \
+            libavahi-gobject-dev \
+            libbluetooth-dev \
+            libboost-dev \
+            libboost-iostreams-dev \
+            libboost-system-dev \
+            libcurl4-openssl-dev \
+            libeigen3-dev \
+            libfftw3-dev \
+            libgtk-3-dev \
+            libgtkmm-3.0-dev \
+            libjack-jackd2-dev \
+            liblilv-dev \
+            liblo-dev \
+            liblrdf0-dev \
+            libsndfile1-dev \
+            lv2-dev \
+            sassc
+
+      - name: Configure
+        working-directory: trunk
+        run: python3 ./waf configure --prefix=/usr --includeresampler --includeconvolver
+
+      - name: Build
+        working-directory: trunk
+        run: python3 ./waf build
+
+  macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          brew update
+          brew install \
+            boost \
+            eigen \
+            fftw \
+            gperf \
+            gtk+3 \
+            gtkmm3 \
+            intltool \
+            jack \
+            lilv \
+            lrdf \
+            lv2 \
+            libsndfile \
+            pkg-config \
+            sassc
+
+      - name: Set environment variables
+        run: |
+          FFTW_PREFIX="$(brew --prefix fftw)"
+          BOOST_PREFIX="$(brew --prefix boost)"
+          RAPTOR_PREFIX="$(brew --prefix raptor)"
+          # raptor include path is added explicitly because the lrdf bottle's
+          # pkg-config file can reference a stale raptor Cellar path
+          echo "CPATH=${FFTW_PREFIX}/include:${BOOST_PREFIX}/include:${RAPTOR_PREFIX}/include/raptor2${CPATH:+:$CPATH}" >> "$GITHUB_ENV"
+          echo "LIBRARY_PATH=${FFTW_PREFIX}/lib:${BOOST_PREFIX}/lib${LIBRARY_PATH:+:$LIBRARY_PATH}" >> "$GITHUB_ENV"
+          echo "PKG_CONFIG_PATH=${FFTW_PREFIX}/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}" >> "$GITHUB_ENV"
+
+      - name: Configure
+        working-directory: trunk
+        run: python3 ./waf configure --prefix=/usr/local --includeresampler --includeconvolver --no-avahi --no-bluez --no-lv2-gui
+
+      - name: Build
+        working-directory: trunk
+        run: python3 ./waf build
