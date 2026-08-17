@@ -3,6 +3,7 @@ name: build
 on:
   push:
     branches: ["**"]
+    tags: ["v*"]
   pull_request:
 
 jobs:
@@ -46,6 +47,19 @@ jobs:
       - name: Build
         working-directory: trunk
         run: python3 ./waf build
+
+      - name: Package
+        working-directory: trunk
+        run: |
+          VERSION="$(sed -n "s/^VERSION='\(.*\)'/\1/p" wscript)"
+          python3 ./waf install --destdir="$PWD/pkg"
+          tar -C pkg -czf "guitarix-${VERSION}-linux-x86_64.tar.gz" .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: guitarix-linux-x86_64
+          path: trunk/guitarix-*-linux-x86_64.tar.gz
 
   macos:
     runs-on: macos-latest
@@ -92,3 +106,35 @@ jobs:
       - name: Build
         working-directory: trunk
         run: python3 ./waf build
+
+      - name: Package
+        working-directory: trunk
+        run: |
+          VERSION="$(sed -n "s/^VERSION='\(.*\)'/\1/p" wscript)"
+          python3 ./waf install --destdir="$PWD/pkg"
+          tar -C pkg -czf "guitarix-${VERSION}-macos-$(uname -m).tar.gz" .
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: guitarix-macos
+          path: trunk/guitarix-*-macos-*.tar.gz
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
